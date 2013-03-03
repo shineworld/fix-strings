@@ -3,7 +3,6 @@ import java.io.File;
 import org.w3c.dom.*;
 import javax.xml.parsers.*;
 import javax.xml.transform.*;
-import javax.xml.transform.dom.DOMResult;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import javax.xml.xpath.*;
@@ -36,11 +35,13 @@ public class FixStrings {
 
 		try {
 			if (isOptionInCommandLine(args, "-h") || isOptionInCommandLine(args, "--help")) {
-				System.out.println("Usage: FixStrings [OPTION]... <SOURCE_FILE> <TRANSLATED_FILE> [FIXED_FILE]\n");
+				System.out.println("Usage: FixStrings [OPTION]... <SOURCE_FILE> <TRANSLATED_FILE> [FIXED_FILE]");
+				System.out.println("       FixStrings -c <TRANSLATED_FILE>\n");
 				System.out.println("Mandatory arguments to long options are mandatory for short options too.");
 				System.out.println("  -f             fill untraslated string's content adding 'TODO:' prefix.");
+				System.out.println("  -c             clean TRANSLATED_FILE from 'TODO': prefixed strings");
 				System.out.println("  -s             show untraslated strings list.");
-				System.out.println("  -q		     quiet mode.\n");
+				System.out.println("  -q             quiet mode.\n");
 				System.out.println("  -h, --help     this help.\n");
 				System.out.println("SOURCE_FILE      is /res/values/strings.xml source file.");
 				System.out.println("TRANSLATED_FILE  is /res/values-xx/strings.xml translated file.");
@@ -50,6 +51,7 @@ public class FixStrings {
 
 			boolean showUntranslated = isOptionInCommandLine(args, "-s");
 			boolean fillUntranslated = isOptionInCommandLine(args, "-f");
+//			boolean cleanTranslated = isOptionInCommandLine(args, "-c");
 			boolean quietMode = isOptionInCommandLine(args, "-q");
 
 			String sourceFilename = getOptionInCommandLine(args, 0);
@@ -80,11 +82,7 @@ public class FixStrings {
 
 			Document documentS = domBuilder.parse(new File(sourceFilename));
 			Document documentT = domBuilder.parse(new File(translatedFilename));
-
-			DOMSource domSourceS = new DOMSource(documentS);
-			DOMResult domSourceF = new DOMResult();
-			transformer.transform(domSourceS, domSourceF);
-			Document documentF = (Document) domSourceF.getNode();
+			Document documentF = domBuilder.parse(new File(sourceFilename));
 
 			XPathExpression expr = xpath.compile("//string");
 			NodeList nodesS = (NodeList) expr.evaluate(documentS, XPathConstants.NODESET);
@@ -138,8 +136,10 @@ public class FixStrings {
 				}
 			}
 
+			documentF.setXmlStandalone(true);
 			DOMSource domSource = new DOMSource(documentF);
 			StreamResult streamResult = new StreamResult(new File(fixedTranslatedFileName));
+			transformer.setOutputProperty(OutputKeys.INDENT, "yes");		
 			transformer.transform(domSource, streamResult);
 
 			if (!quietMode) {
